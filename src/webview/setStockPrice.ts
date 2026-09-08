@@ -4,6 +4,7 @@ import StockService from '../explorer/stockService';
 import globalState from '../globalState';
 import { LeekFundConfig } from '../shared/leekConfig';
 import { LeekTreeItem } from '../shared/leekTreeItem';
+import { refreshHeldStocks } from '../shared/heldStocks';
 import { IAmount } from '../shared/typed';
 import { formatDate, getTemplateFileContent, toFixed } from '../shared/utils';
 import ReusedWebviewPanel from './ReusedWebviewPanel';
@@ -25,7 +26,7 @@ async function setStockPrice(stockService: StockService) {
     switch (message.command) {
       case 'success':
         console.log(JSON.parse(message.text));
-        setStockPriceCfgCb(JSON.parse(message.text));
+        setStockPriceCfgCb(JSON.parse(message.text), stockService);
         return;
       case 'alert':
         window.showErrorMessage('保存失败！');
@@ -96,7 +97,7 @@ function getWebviewContent(panel: WebviewPanel) {
   panel.webview.html = getTemplateFileContent('stock-price.html', panel.webview);
 }
 
-function setStockPriceCfgCb(data: IAmount[]) {
+function setStockPriceCfgCb(data: IAmount[], stockService?: StockService) {
   const cfg: any = {};
   data.forEach((item: any) => {
     cfg[item.code] = {
@@ -112,6 +113,8 @@ function setStockPriceCfgCb(data: IAmount[]) {
   });
   LeekFundConfig.setConfig('leek-fund.stockPrice', cfg).then(() => {
     cacheStockPriceData(cfg);
+    // 成本设置保存后刷新持仓股票缓存
+    refreshHeldStocks(stockService?.stockList || []);
     window.showInformationMessage('保存成功！（没开市的时候添加的持仓盈亏为0，开市时会自动计算）');
   });
 }

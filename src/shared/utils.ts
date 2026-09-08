@@ -26,6 +26,19 @@ export const objectToQueryString = (queryParameters: Object): string => {
     : '';
 };
 
+/**
+ * 归一化股票代码，与 stockService 请求前的转换逻辑保持一致，
+ * 用于自定义分组与行情数据之间的代码匹配（如大写期货代码 IF0 -> nf_IF0）
+ */
+export const normalizeStockCode = (code: string): string => {
+  if (/^[A-Z]+/.test(code)) {
+    return code.replace(/^[A-Z]+/, (it: string) => `nf_${it}`);
+  } else if (/cnf_/.test(code)) {
+    return code.replace('cnf_', 'nf_');
+  }
+  return code;
+};
+
 export const formatDate = (val: Date | string | undefined, seperator = '-') => {
   let date = new Date();
   if (typeof val === 'object') {

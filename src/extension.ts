@@ -7,6 +7,7 @@
 import { ConfigurationChangeEvent, ExtensionContext, TreeView, window, workspace } from 'vscode';
 import { BinanceProvider } from './explorer/binanceProvider';
 import BinanceService from './explorer/binanceService';
+import { FundDragDropController, StockDragDropController } from './explorer/dragDropController';
 import { ForexProvider } from './explorer/forexProvider';
 import { ForexService } from './explorer/forexService';
 import { FundProvider } from './explorer/fundProvider';
@@ -20,6 +21,7 @@ import FlashNewsOutputServer from './output/flash-news/FlashNewsOutputServer';
 import { registerCommandPaletteEvent, registerViewEvent } from './registerCommand';
 import { HolidayHelper } from './shared/holidayHelper';
 import { LeekFundConfig } from './shared/leekConfig';
+import { refreshHeldStocks } from './shared/heldStocks';
 import Log from './shared/log';
 import { Telemetry } from './shared/telemetry';
 import { SortType } from './shared/typed';
@@ -81,16 +83,21 @@ export async function activate(context: ExtensionContext) {
   const forexProvider = new ForexProvider(forexService);
   const newsProvider = new NewsProvider();
 
+  // 初始化持仓股票缓存（首次行情数据返回后会在 StockService.getData 中自动刷新）
+  refreshHeldStocks(stockService.stockList);
+
   const statusBar = new StatusBar(stockService, fundService);
   profitBar = new ProfitStatusBar();
 
   // create fund & stock side views
   fundTreeView = window.createTreeView('leekFundView.fund', {
     treeDataProvider: nodeFundProvider,
+    dragAndDropController: new FundDragDropController(nodeFundProvider),
   });
 
   stockTreeView = window.createTreeView('leekFundView.stock', {
     treeDataProvider: nodeStockProvider,
+    dragAndDropController: new StockDragDropController(nodeStockProvider),
   });
 
   binanceTreeView = window.createTreeView('leekFundView.binance', {
@@ -218,7 +225,8 @@ export async function activate(context: ExtensionContext) {
     newsProvider,
     flashNewsOutputServer,
     binanceProvider,
-    forexProvider
+    forexProvider,
+    stockTreeView
   );
 
   // register command
@@ -272,6 +280,14 @@ function setGlobalVariable() {
     LeekFundConfig.setConfig('leek-fund.funds', newFundLists);
   } else {
     globalState.fundLists = fundLists;
+  }
+
+  // 股票自定义分组（与市场分类同级的分组，初始为空）
+  globalState.stockGroups = LeekFundConfig.getConfig('leek-fund.stockGroups') || [];
+  globalState.stockGroupLists = LeekFundConfig.getConfig('leek-fund.stockGroupLists') || [];
+  // 保持分组名称与分组股票列表长度一致
+  while (globalState.stockGroupLists.length < globalState.stockGroups.length) {
+    globalState.stockGroupLists.push([]);
   }
   // 临时解决3.10.1~3.10.3 pr产生的分组bug
   // const leekFundExt = extensions.getExtension('giscafer.leek-fund');

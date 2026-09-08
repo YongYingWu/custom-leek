@@ -2,6 +2,7 @@ import { ExtensionContext } from 'vscode';
 import { DEFAULT_LABEL_FORMAT } from './shared/constant';
 import { Telemetry } from './shared/telemetry';
 import { ForexData } from './shared/typed';
+import type { LeekTreeItem } from './shared/leekTreeItem';
 
 const deviceId = Math.random().toString(16).substr(2) + Math.random().toString(32).substr(2);
 
@@ -38,6 +39,11 @@ let isDevelopment = false; // 是否开发环境
 
 let fundGroups: Array<string> = [];
 let fundLists: Array<Array<string>> = [];
+
+let stockGroups: Array<string> = [];
+let stockGroupLists: Array<Array<string>> = [];
+
+let heldStocks: Array<LeekTreeItem> = []; // 持仓股票缓存（设置过成本价的股票）
 
 let stockPrice = {}; // 缓存数据
 let stockPriceCacheDate = '2020-10-30';
@@ -86,6 +92,11 @@ export default {
   isDevelopment,
   fundGroups,
   fundLists,
+
+  stockGroups,
+  stockGroupLists,
+
+  heldStocks,
 
   stockPrice,
   stockPriceCacheDate,

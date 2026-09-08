@@ -168,6 +168,113 @@ export class LeekFundConfig extends BaseConfig {
   // Fund End
 
   // Stock Begin
+  /**
+   * 解析分组内股票节点的复合 id（格式：stockGroup_{index}_{code}）
+   * 返回 null 表示不是分组内的节点（如市场分类下的股票，id 就是 code）
+   * groupIndex 为 -1 时表示固定「持仓」分组（stockGroup_held_{code}）
+   */
+  static parseStockGroupItemId(id: string): { groupIndex: number; code: string } | null {
+    if (!id || !id.startsWith('stockGroup_')) {
+      return null;
+    }
+    const rest = id.substring('stockGroup_'.length);
+    const sep = rest.indexOf('_');
+    if (sep < 0) {
+      return null;
+    }
+    const indexStr = rest.substring(0, sep);
+    return {
+      groupIndex: indexStr === 'held' ? -1 : parseInt(indexStr),
+      code: rest.substring(sep + 1),
+    };
+  }
+
+  static addStockGroupCfg(name: string, cb?: Function) {
+    globalState.stockGroups.push(name);
+    globalState.stockGroupLists.push([]);
+    this.setConfig('leek-fund.stockGroups', globalState.stockGroups);
+    this.setConfig('leek-fund.stockGroupLists', globalState.stockGroupLists);
+    window.showInformationMessage(`Stock Group Successfully add.`);
+    if (cb && typeof cb === 'function') {
+      cb(name);
+    }
+  }
+
+  static renameStockGroupCfg(groupId: string, name: string, cb?: Function) {
+    const index: number = parseInt(groupId.replace('stockGroup_', ''));
+    globalState.stockGroups[index] = name;
+    this.setConfig('leek-fund.stockGroups', globalState.stockGroups);
+    window.showInformationMessage(`Stock Group Successfully rename.`);
+    if (cb && typeof cb === 'function') {
+      cb(groupId);
+    }
+  }
+
+  static removeStockGroupCfg(groupId: string, cb?: Function) {
+    const index: number = parseInt(groupId.replace('stockGroup_', ''));
+    const removedStockList: Array<string> = globalState.stockGroupLists[index] || [];
+    const removeStockGroup = () => {
+      globalState.stockGroups.splice(index, 1);
+      globalState.stockGroupLists.splice(index, 1);
+      this.setConfig('leek-fund.stockGroups', globalState.stockGroups);
+      this.setConfig('leek-fund.stockGroupLists', globalState.stockGroupLists);
+      window.showInformationMessage(`Stock Group Successfully delete.`);
+      if (cb && typeof cb === 'function') {
+        cb(groupId);
+      }
+    };
+
+    if (removedStockList.length) {
+      window
+        .showInformationMessage(
+          '删除分组不会影响股票数据，组内股票仍会在默认市场分类中显示，请确认！',
+          '好的',
+          '取消'
+        )
+        .then((res) => {
+          if (res === '好的') {
+            removeStockGroup();
+          }
+        });
+    } else {
+      removeStockGroup();
+    }
+  }
+
+  /**
+   * 将股票加入指定自定义分组（支持一只股票同时属于多个分组）
+   */
+  static addStockToGroupCfg(groupId: string, code: string, cb?: Function) {
+    const index: number = parseInt(groupId.replace('stockGroup_', ''));
+    const list = globalState.stockGroupLists[index] || [];
+    if (list.includes(code)) {
+      window.showInformationMessage(`Stock Already in this group.`);
+      if (cb && typeof cb === 'function') {
+        cb(code);
+      }
+      return;
+    }
+    globalState.stockGroupLists[index] = uniq(clean([...list, code])) as string[];
+    this.setConfig('leek-fund.stockGroupLists', globalState.stockGroupLists);
+    if (cb && typeof cb === 'function') {
+      cb(code);
+    }
+  }
+
+  /**
+   * 将股票从指定分组中移除，不影响其他分组和自选列表
+   */
+  static removeStockFromGroupCfg(groupId: string, code: string, cb?: Function) {
+    const index: number = parseInt(groupId.replace('stockGroup_', ''));
+    const list = globalState.stockGroupLists[index] || [];
+    globalState.stockGroupLists[index] = list.filter((item) => item !== code);
+    this.setConfig('leek-fund.stockGroupLists', globalState.stockGroupLists);
+    window.showInformationMessage(`Stock Successfully removed from group.`);
+    if (cb && typeof cb === 'function') {
+      cb(code);
+    }
+  }
+
   static updateStockCfg(list: string, cb?: Function) {
     const cfgKey = 'leek-fund.stocks';
     const config = this.getGlobalConfig();
@@ -190,6 +297,17 @@ export class LeekFundConfig extends BaseConfig {
   }
 
   static removeStockCfg(code: string, cb?: Function) {
+    // 同步从所有自定义分组中移除
+    const cleanedLists = (globalState.stockGroupLists || []).map((list) =>
+      (list || []).filter((item) => item !== code)
+    );
+    const groupChanged = cleanedLists.some(
+      (list, i) => list.length !== (globalState.stockGroupLists[i] || []).length
+    );
+    if (groupChanged) {
+      globalState.stockGroupLists = cleanedLists;
+      this.setConfig('leek-fund.stockGroupLists', globalState.stockGroupLists);
+    }
     this.removeConfig('leek-fund.stocks', code).then(() => {
       window.showInformationMessage(`Stock Successfully delete.`);
       if (cb && typeof cb === 'function') {
@@ -232,109 +350,54 @@ export class LeekFundConfig extends BaseConfig {
   }
 
   static setStockTopCfg(code: string, cb?: Function) {
+    const groupItem = this.parseStockGroupItemId(code);
+    if (groupItem && groupItem.groupIndex >= 0) {
+      // 分组内置顶
+      const list = globalState.stockGroupLists[groupItem.groupIndex] || [];
+      globalState.stockGroupLists[groupItem.groupIndex] = [
+        groupItem.code,
+        ...list.filter((item) => item !== groupItem.code),
+      ];
+      this.setConfig('leek-fund.stockGroupLists', globalState.stockGroupLists).then(() => {
+        window.showInformationMessage(`Stock successfully set to top.`);
+        if (cb && typeof cb === 'function') {
+          cb(code);
+        }
+      });
+      return;
+    }
+    // 持仓分组等虚拟分组的节点，置顶作用于市场分类顺序
+    const flatCode = groupItem ? groupItem.code : code;
     let arr: string[] = this.getConfig('leek-fund.stocks');
     // 临时解决3.10.1~3.10.3 pr产生的分组bug
-    const stockList = flattenDeep(arr).filter?.((item) => item !== code);
-    stockList.unshift(code);
+    const stockList = flattenDeep(arr).filter?.((item) => item !== flatCode);
+    stockList.unshift(flatCode);
 
     this.setConfig('leek-fund.stocks', stockList).then(() => {
       window.showInformationMessage(`Stock successfully set to top.`);
       if (cb && typeof cb === 'function') {
-        cb(code);
+        cb(flatCode);
       }
     });
   }
 
-  static setStockUpCfg(code: string, cb?: Function) {
-    const callback = () => {
-      window.showInformationMessage(`Stock successfully move up.`);
+  /**
+   * 将股票标记为已清仓（保留持仓数量等数据，从固定「持仓」分组移除，不影响自选与自定义分组）
+   */
+  static markStockSellOutCfg(code: string, cb?: Function) {
+    const stockPrice = { ...(this.getConfig('leek-fund.stockPrice') || {}) };
+    if (!stockPrice[code]) {
+      window.showInformationMessage(`该股票没有持仓数据`);
+      return;
+    }
+    stockPrice[code] = { ...stockPrice[code], isSellOut: true };
+    globalState.stockPrice = stockPrice;
+    this.setConfig('leek-fund.stockPrice', stockPrice).then(() => {
+      window.showInformationMessage(`Stock Successfully marked as sold out.`);
       if (cb && typeof cb === 'function') {
         cb(code);
       }
-    };
-
-    let configArr: string[] = this.getConfig('leek-fund.stocks');
-    const currentIndex = configArr.indexOf(code);
-    let previousIndex = currentIndex - 1;
-    // 找到前一个同市场的股票
-    for (let index = currentIndex - 1; index >= 0; index--) {
-      const previousCode = configArr[index];
-      if (/^(sh|sz|bj)/.test(code) && /^(sh|sz|bj)/.test(previousCode)) {
-        previousIndex = index;
-        break;
-      }
-      if (/^(hk)/.test(code) && /^(hk)/.test(previousCode)) {
-        previousIndex = index;
-        break;
-      }
-      if (/^(usr_)/.test(code) && /^(usr_)/.test(previousCode)) {
-        previousIndex = index;
-        break;
-      }
-      if (/^(nf_)/.test(code) && /^(nf_)/.test(previousCode)) {
-        previousIndex = index;
-        break;
-      }
-      if (/^(hf_)/.test(code) && /^(hf_)/.test(previousCode)) {
-        previousIndex = index;
-        break;
-      }
-    }
-    if (previousIndex < 0) {
-      callback();
-    } else {
-      // 交换位置
-      configArr[currentIndex] = configArr.splice(previousIndex, 1, configArr[currentIndex])[0];
-      this.setConfig('leek-fund.stocks', configArr).then(() => {
-        callback();
-      });
-    }
-  }
-
-  static setStockDownCfg(code: string, cb?: Function) {
-    const callback = () => {
-      window.showInformationMessage(`Stock successfully move down.`);
-      if (cb && typeof cb === 'function') {
-        cb(code);
-      }
-    };
-
-    let configArr: string[] = this.getConfig('leek-fund.stocks');
-    const currentIndex = configArr.indexOf(code);
-    let nextIndex = currentIndex + 1;
-    //找到后一个同市场的股票
-    for (let index = currentIndex + 1; index < configArr.length; index++) {
-      const nextCode = configArr[index];
-      if (/^(sh|sz|bj)/.test(code) && /^(sh|sz|bj)/.test(nextCode)) {
-        nextIndex = index;
-        break;
-      }
-      if (/^(hk)/.test(code) && /^(hk)/.test(nextCode)) {
-        nextIndex = index;
-        break;
-      }
-      if (/^(usr_)/.test(code) && /^(usr_)/.test(nextCode)) {
-        nextIndex = index;
-        break;
-      }
-      if (/^(nf_)/.test(code) && /^(nf_)/.test(nextCode)) {
-        nextIndex = index;
-        break;
-      }
-      if (/^(hf_)/.test(code) && /^(hf_)/.test(nextCode)) {
-        nextIndex = index;
-        break;
-      }
-    }
-    if (nextIndex >= configArr.length) {
-      callback();
-    } else {
-      // 交换位置
-      configArr[currentIndex] = configArr.splice(nextIndex, 1, configArr[currentIndex])[0];
-      this.setConfig('leek-fund.stocks', configArr).then(() => {
-        callback();
-      });
-    }
+    });
   }
 
   // Stock End

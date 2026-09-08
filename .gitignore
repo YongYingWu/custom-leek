@@ -1,7 +1,7 @@
 out
 node_modules
 .vscode-test/
-*.vsix
+# *.vsix
 *.zip
 # yarn.lock
 package-lock.json

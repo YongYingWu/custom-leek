@@ -2,7 +2,7 @@
   "name": "leek-fund",
   "displayName": "韭菜盒子",
   "description": "韭菜盒子，VSCode 里也可以看股票 & 基金实时数据，做最好用的投资插件",
-  "version": "3.24.0",
+  "version": "99.99.99",
   "author": "Nicky Lao <giscafer@outlook.com>",
   "repository": {
     "type": "git",
@@ -23,7 +23,7 @@
   "publisher": "giscafer",
   "icon": "resources/logo.png",
   "engines": {
-    "vscode": "^1.59.0"
+    "vscode": "^1.66.0"
   },
   "enableProposedAPI": false,
   "categories": [
@@ -133,6 +133,27 @@
         "icon": "$(diff-added)"
       },
       {
+        "command": "leek-fund.addStockGroup",
+        "title": "添加分组",
+        "icon": "$(diff-added)"
+      },
+      {
+        "command": "leek-fund.removeStockGroup",
+        "title": "删除分组"
+      },
+      {
+        "command": "leek-fund.renameStockGroup",
+        "title": "修改分组名称"
+      },
+      {
+        "command": "leek-fund.addStockToGroup",
+        "title": "添加至分组"
+      },
+      {
+        "command": "leek-fund.markStockSellOut",
+        "title": "已清仓"
+      },
+      {
         "command": "leek-fund.setFundAmount",
         "title": "设置基金持仓金额",
         "icon": {
@@ -211,16 +232,6 @@
           "light": "resources/light/top.svg",
           "dark": "resources/dark/top.svg"
         }
-      },
-      {
-        "command": "leek-fund.setStockUp",
-        "title": "股票上移",
-        "icon": "$(arrow-up)"
-      },
-      {
-        "command": "leek-fund.setStockDown",
-        "title": "股票下移",
-        "icon": "$(arrow-down)"
       },
       {
         "command": "leek-fund.deleteStock",
@@ -363,16 +374,6 @@
           "group": "navigation"
         },
         {
-          "command": "leek-fund.sortFund",
-          "when": "view == leekFundView.fund",
-          "group": "navigation"
-        },
-        {
-          "command": "leek-fund.sortAmountFund",
-          "when": "view == leekFundView.fund",
-          "group": "navigation"
-        },
-        {
           "command": "leek-fund.addFundGroup",
           "when": "view == leekFundView.fund",
           "group": "navigation"
@@ -384,11 +385,6 @@
         },
         {
           "command": "leek-fund.refreshStock",
-          "when": "view == leekFundView.stock",
-          "group": "navigation"
-        },
-        {
-          "command": "leek-fund.sortStock",
           "when": "view == leekFundView.stock",
           "group": "navigation"
         },
@@ -409,6 +405,11 @@
         },
         {
           "command": "leek-fund.setStockPrice",
+          "when": "view == leekFundView.stock",
+          "group": "navigation"
+        },
+        {
+          "command": "leek-fund.addStockGroup",
           "when": "view == leekFundView.stock",
           "group": "navigation"
         },
@@ -449,6 +450,21 @@
         }
       ],
       "view/item/context": [
+        {
+          "command": "leek-fund.sortFund",
+          "when": "view == leekFundView.fund && viewItem == category",
+          "group": "inline"
+        },
+        {
+          "command": "leek-fund.sortAmountFund",
+          "when": "view == leekFundView.fund && viewItem == category",
+          "group": "inline"
+        },
+        {
+          "command": "leek-fund.sortStock",
+          "when": "view == leekFundView.stock && (viewItem == category || viewItem == stockGroup || viewItem == stockHeldGroup)",
+          "group": "inline"
+        },
         {
           "command": "leek-fund.viewFundHistory",
           "when": "view == leekFundView.fund && viewItem != category",
@@ -491,53 +507,58 @@
         },
         {
           "command": "leek-fund.setStockTop",
-          "when": "view == leekFundView.stock && viewItem != category  && viewItem!=nodata",
-          "group": "group1"
-        },
-        {
-          "command": "leek-fund.setStockUp",
-          "when": "view == leekFundView.stock && viewItem != category  && viewItem!=nodata",
-          "group": "group1"
-        },
-        {
-          "command": "leek-fund.setStockDown",
-          "when": "view == leekFundView.stock && viewItem != category  && viewItem!=nodata",
+          "when": "view == leekFundView.stock && viewItem != category && viewItem != stockGroup && viewItem!=nodata && viewItem != aStockHeld && viewItem != hkStockHeld && viewItem != stockHeld",
           "group": "group1"
         },
         {
           "command": "leek-fund.stockTrendPic",
-          "when": "view == leekFundView.stock  && viewItem != category && viewItem!=nodata",
+          "when": "view == leekFundView.stock && viewItem != category && viewItem != stockGroup && viewItem!=nodata",
           "group": "group2"
         },
         {
           "command": "leek-fund.setStockTop",
-          "when": "view == leekFundView.stock && viewItem != category && viewItem!=nodata",
+          "when": "view == leekFundView.stock && viewItem != category && viewItem != stockGroup && viewItem!=nodata && viewItem != aStockHeld && viewItem != hkStockHeld && viewItem != stockHeld",
           "group": "inline"
         },
         {
-          "command": "leek-fund.setStockUp",
-          "when": "view == leekFundView.stock && viewItem != category && viewItem!=nodata",
-          "group": "inline"
-        },
-        {
-          "command": "leek-fund.setStockDown",
-          "when": "view == leekFundView.stock && viewItem != category && viewItem!=nodata",
-          "group": "inline"
+          "command": "leek-fund.addStockToGroup",
+          "when": "view == leekFundView.stock && viewItem != category && viewItem != stockGroup && viewItem!=nodata",
+          "group": "group6"
         },
         {
           "command": "leek-fund.aiStockAnalysis",
-          "when": "view == leekFundView.stock && (viewItem == aStock || viewItem == hkStock)",
+          "when": "view == leekFundView.stock && (viewItem =~ /^aStock/ || viewItem =~ /^hkStock/)",
           "group": "inline"
         },
         {
           "command": "leek-fund.deleteStock",
-          "when": "view == leekFundView.stock  && viewItem != category",
+          "when": "view == leekFundView.stock && viewItem != category && viewItem != stockGroup && viewItem != aStockHeld && viewItem != hkStockHeld && viewItem != stockHeld",
+          "group": "group5"
+        },
+        {
+          "command": "leek-fund.markStockSellOut",
+          "when": "view == leekFundView.stock && viewItem =~ /Held$/",
           "group": "group5"
         },
         {
           "command": "leek-fund.addStockToBar",
-          "when": "view == leekFundView.stock  && viewItem != category",
+          "when": "view == leekFundView.stock && viewItem != category && viewItem != stockGroup",
           "group": "group6"
+        },
+        {
+          "command": "leek-fund.addStock",
+          "when": "view == leekFundView.stock && viewItem == stockGroup",
+          "group": "inline"
+        },
+        {
+          "command": "leek-fund.removeStockGroup",
+          "when": "view == leekFundView.stock && viewItem == stockGroup",
+          "group": "group7"
+        },
+        {
+          "command": "leek-fund.renameStockGroup",
+          "when": "view == leekFundView.stock && viewItem == stockGroup",
+          "group": "group7"
         },
         {
           "command": "leek-fund.deletePair",
@@ -639,6 +660,16 @@
         "leek-fund.stocksRemind": {
           "type": "object",
           "description": "股票涨跌提醒，支持价格、涨跌幅。"
+        },
+        "leek-fund.stockGroups": {
+          "type": "array",
+          "default": [],
+          "description": "股票自定义分组名称（建议通过界面新增）"
+        },
+        "leek-fund.stockGroupLists": {
+          "type": "array",
+          "default": [],
+          "description": "股票自定义分组内的股票代码（不建议手填，格式错误影响功能）"
         },
         "leek-fund.statusBarStock": {
           "type": "array",
@@ -879,7 +910,7 @@
     "@types/lodash": "4.17.5",
     "@types/mocha": "^7.0.2",
     "@types/node": "^18.0.0",
-    "@types/vscode": "1.59.0",
+    "@types/vscode": "^1.66.0",
     "@types/ws": "^7.4.0",
     "@typescript-eslint/eslint-plugin": "^2.30.0",
     "@typescript-eslint/parser": "^2.30.0",

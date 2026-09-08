@@ -2,6 +2,7 @@ import Axios from 'axios';
 import { decode } from 'iconv-lite';
 import { ExtensionContext, QuickPickItem, window } from 'vscode';
 import globalState from '../globalState';
+import { refreshHeldStocks } from '../shared/heldStocks';
 import { LeekTreeItem } from '../shared/leekTreeItem';
 import { executeStocksRemind } from '../shared/remindNotification';
 import { HeldData } from '../shared/typed';
@@ -83,6 +84,8 @@ export default class StockService extends LeekService {
     executeStocksRemind(res, this.stockList);
     const oldStockList = this.stockList;
     this.stockList = res;
+    // 同步刷新持仓股票缓存
+    refreshHeldStocks(res);
     events.emit('updateBar:stock-profit-refresh', this);
     events.emit('stockListUpdate', this.stockList, oldStockList);
     return res;
