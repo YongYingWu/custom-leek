@@ -555,11 +555,23 @@
             return sortType === 'earningsDesc' ? be - ae : ae - be;
           });
         } else {
-          fundList = data;
+          // 默认排序：持仓中（未清仓且数量>0）在前，已清仓但有数量的其次，其他最后
+          fundList = data.slice().sort((a, b) => holdingRank(a) - holdingRank(b));
         }
         // console.log(fundList);
 
         init2();
+      }
+
+      function holdingRank(item) {
+        const amount = Number(item.amount) || 0;
+        if (amount > 0 && !item.isSellOut) {
+          return 0;
+        }
+        if (amount > 0) {
+          return 1;
+        }
+        return 2;
       }
 
       function init2() {

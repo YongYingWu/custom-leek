@@ -200,18 +200,17 @@ export class StockProvider implements TreeDataProvider<LeekTreeItem> {
     const nodes: LeekTreeItem[] = [];
     // 固定「持仓」分组：展示设置了成本价的股票，置顶显示
     const heldCount = getHeldStocks(stocks).length;
-    if (heldCount > 0) {
-      nodes.push(
-        new LeekTreeItem(
-          Object.assign({ contextValue: 'stockHeldGroup' }, defaultFundInfo, {
-            id: STOCK_HELD_GROUP_ID,
-            name: `持仓(${heldCount})`,
-          }),
-          undefined,
-          true
-        )
-      );
-    }
+    // 固定分组始终显示，哪怕没有持仓股票
+    nodes.push(
+      new LeekTreeItem(
+        Object.assign({ contextValue: 'stockHeldGroup' }, defaultFundInfo, {
+          id: STOCK_HELD_GROUP_ID,
+          name: heldCount > 0 ? `持仓(${heldCount})` : '持仓',
+        }),
+        undefined,
+        true
+      )
+    );
     nodes.push(
       new LeekTreeItem(
         Object.assign({ contextValue: 'category' }, defaultFundInfo, {
