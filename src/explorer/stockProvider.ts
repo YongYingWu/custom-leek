@@ -62,10 +62,10 @@ export class StockProvider implements TreeDataProvider<LeekTreeItem> {
   private getSortDescription(containerId: string): string {
     const order = this.getOrder(containerId);
     if (order === SortType.ASC) {
-      return '↑升序';
+      return '↑';
     }
     if (order === SortType.DESC) {
-      return '↓降序';
+      return '↓';
     }
     return '';
   }
