@@ -124,7 +124,7 @@ export class StockProvider implements TreeDataProvider<LeekTreeItem> {
     if (groupItem) {
       if (groupItem.groupIndex === -1) {
         // 固定「持仓」分组
-        return this.createCategoryNode(STOCK_HELD_GROUP_ID, '持仓', 'stockHeldGroup');
+        return this.createCategoryNode(STOCK_HELD_GROUP_ID, '持仓', 'category');
       }
       return this.createCategoryNode(
         `stockGroup_${groupItem.groupIndex}`,
@@ -203,7 +203,8 @@ export class StockProvider implements TreeDataProvider<LeekTreeItem> {
     // 固定分组始终显示，哪怕没有持仓股票
     nodes.push(
       new LeekTreeItem(
-        Object.assign({ contextValue: 'stockHeldGroup' }, defaultFundInfo, {
+        // contextValue 用 category（与市场分类一致），右键菜单和置顶按钮不会显示在该节点上
+        Object.assign({ contextValue: 'category' }, defaultFundInfo, {
           id: STOCK_HELD_GROUP_ID,
           name: heldCount > 0 ? `持仓(${heldCount})` : '持仓',
         }),

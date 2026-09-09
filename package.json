@@ -462,7 +462,7 @@
         },
         {
           "command": "leek-fund.sortStock",
-          "when": "view == leekFundView.stock && (viewItem == category || viewItem == stockGroup || viewItem == stockHeldGroup)",
+          "when": "view == leekFundView.stock && (viewItem == category || viewItem == stockGroup)",
           "group": "inline"
         },
         {
